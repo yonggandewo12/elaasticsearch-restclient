@@ -1,0 +1,14 @@
+server:
+  port: 8080
+
+# es ip
+elasticsearch:
+  ip: 49.232.16.165
+  port: 9200
+  http:
+    connectTimeOut: 1000            # 连接超时时间
+    socketTimeOut: 30000                  # socket超时时间
+    connectionRequestTimeOut: 500            # 获取连接的超时时间
+    maxConnectNum: 100                    # 最大连接数
+    maxConnectPerRoute: 100               # 最大路由连接数
+

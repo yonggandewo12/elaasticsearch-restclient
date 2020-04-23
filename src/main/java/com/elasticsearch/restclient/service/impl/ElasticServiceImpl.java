@@ -2,14 +2,13 @@ package com.elasticsearch.restclient.service.impl;
 
 import com.elasticsearch.restclient.constants.KeyConstant;
 import com.elasticsearch.restclient.entity.Book;
-import com.elasticsearch.restclient.service.BookService;
+import com.elasticsearch.restclient.service.ElasticService;
 import lombok.extern.slf4j.Slf4j;
 import org.elasticsearch.action.delete.DeleteRequest;
 import org.elasticsearch.action.delete.DeleteResponse;
 import org.elasticsearch.action.index.IndexRequest;
 import org.elasticsearch.action.index.IndexResponse;
 import org.elasticsearch.action.search.SearchRequest;
-import org.elasticsearch.action.search.SearchRequestBuilder;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.action.update.UpdateRequest;
 import org.elasticsearch.action.update.UpdateResponse;
@@ -17,12 +16,11 @@ import org.elasticsearch.client.RestHighLevelClient;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.SearchHits;
-import org.elasticsearch.search.aggregations.Aggregation;
-import org.elasticsearch.search.aggregations.AggregationBuilder;
 import org.elasticsearch.search.aggregations.AggregationBuilders;
 import org.elasticsearch.search.aggregations.bucket.terms.ParsedLongTerms;
+import org.elasticsearch.search.aggregations.bucket.terms.ParsedStringTerms;
 import org.elasticsearch.search.aggregations.bucket.terms.Terms;
-import org.elasticsearch.search.aggregations.metrics.avg.Avg;
+import org.elasticsearch.search.aggregations.bucket.terms.support.IncludeExclude;
 import org.elasticsearch.search.aggregations.metrics.max.Max;
 import org.elasticsearch.search.aggregations.metrics.tophits.ParsedTopHits;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
@@ -32,6 +30,7 @@ import org.springframework.stereotype.Service;
 import javax.annotation.Resource;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 
 /**
  * @Description
@@ -41,7 +40,7 @@ import java.util.Map;
  */
 @Service
 @Slf4j
-public class BookServiceImpl implements BookService {
+public class ElasticServiceImpl implements ElasticService {
 
     @Resource
     private RestHighLevelClient restHighLevelClient;
@@ -52,7 +51,12 @@ public class BookServiceImpl implements BookService {
         indexRequest.type(KeyConstant.BOOK_TYPE);
         indexRequest.create(true);
         indexRequest.source(convertBookToMap(book));
-        indexRequest.id(book.getId());
+        if (book.getId() == null || "".equals(book.getId())) {
+            //id非空校验
+            indexRequest.id(UUID.randomUUID().toString());
+        }else{
+            indexRequest.id(book.getId());
+        }
         IndexResponse response = new IndexResponse();
         try {
             response = restHighLevelClient.index(indexRequest);
@@ -183,5 +187,59 @@ public class BookServiceImpl implements BookService {
             log.info(".....聚合索引matrix失败：{}", e);
         }
         return searchResponse.getAggregations().get("top_sales_hits");
+    }
+
+    @Override
+    public ParsedLongTerms  termsAggregate(String key) {
+        SearchRequest searchRequest = new SearchRequest();
+        SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+        searchSourceBuilder.aggregation(AggregationBuilders.terms("term").field(key));
+        searchRequest.source(searchSourceBuilder);
+        searchRequest.indices(KeyConstant.BOOK_INDEX);
+        searchRequest.types(KeyConstant.BOOK_TYPE);
+        SearchResponse searchResponse = new SearchResponse();
+        try {
+            searchResponse = restHighLevelClient.search(searchRequest);
+        } catch (Exception e) {
+            log.error("......terms aggregate failed:{}", e);
+        }
+        return searchResponse.getAggregations().get("term");
+    }
+
+    @Override
+    public ParsedLongTerms  logTermsMultiAggregate(String key) {
+        SearchRequest searchRequest = new SearchRequest();
+        SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+        searchSourceBuilder.aggregation(AggregationBuilders.terms("bytes").field(key).order(Terms.Order.aggregation("ram.avg", false)).subAggregation(AggregationBuilders.stats("ram").field("machine.ram")));
+        searchRequest.source(searchSourceBuilder);
+        searchRequest.indices(KeyConstant.LOG_INDEX);
+        searchRequest.types(KeyConstant.LOG_TYPE);
+        SearchResponse searchResponse = new SearchResponse();
+        try {
+            searchResponse = restHighLevelClient.search(searchRequest);
+        } catch (Exception e) {
+            log.error("......terms aggregate failed:{}", e);
+        }
+        return searchResponse.getAggregations().get("bytes");
+    }
+
+    @Override
+    public ParsedStringTerms filterAggregate(String include, String exclude, String field) {
+        SearchRequest searchRequest = new SearchRequest();
+        SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+        IncludeExclude includeExclude = new IncludeExclude(include, exclude);
+        // 对text聚合索引时会报错，此时需要在field处指定其为keyword类型
+        //searchSourceBuilder.aggregation(AggregationBuilders.terms("filter").includeExclude(includeExclude).field(field+".keyword"));
+        searchSourceBuilder.aggregation(AggregationBuilders.terms("filter").includeExclude(includeExclude).field(field));
+        searchRequest.source(searchSourceBuilder);
+        searchRequest.indices(KeyConstant.LOG_INDEX);
+        searchRequest.types(KeyConstant.LOG_TYPE);
+        SearchResponse searchResponse = new SearchResponse();
+        try {
+            searchResponse = restHighLevelClient.search(searchRequest);
+        } catch (Exception e) {
+            log.error("......terms aggregate failed:{}", e);
+        }
+        return searchResponse.getAggregations().get("filter");
     }
 }

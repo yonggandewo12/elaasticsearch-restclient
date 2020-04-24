@@ -14,4 +14,7 @@ public class KeyConstant {
     public static final String LOG_INDEX = "logstash-2015.05.18";
     public static final String LOG_TYPE = "log";
 
+    public static final String FORM_INDEX = "form";
+    public static final String FORM_TYPE = "article";
+
 }

@@ -8,6 +8,7 @@ import io.swagger.annotations.ApiOperation;
 import lombok.extern.slf4j.Slf4j;
 import org.elasticsearch.action.delete.DeleteResponse;
 import org.elasticsearch.action.index.IndexResponse;
+import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.action.update.UpdateResponse;
 import org.elasticsearch.search.SearchHits;
 import org.elasticsearch.search.aggregations.bucket.terms.ParsedLongTerms;
@@ -16,6 +17,8 @@ import org.elasticsearch.search.aggregations.metrics.max.Max;
 import org.elasticsearch.search.aggregations.metrics.tophits.ParsedTopHits;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.Map;
 
 
 /***
@@ -86,6 +89,20 @@ public class ServiceController {
     @ApiOperation(value = "filter聚合索引", notes = "filter聚合索引")
     public ParsedStringTerms filterAggregate(@RequestParam("包含") String include, @RequestParam("排除") String exclude, @RequestParam("聚合索引关键字") String field) {
         return elasticService.filterAggregate(include, exclude, field);
+    }
+
+    @PostMapping("/term")
+    @ApiOperation(value = "term索引", notes = "term索引")
+    public SearchResponse filterAggregate(@RequestParam("key") String key) {
+        return elasticService.term(key);
+    }
+
+
+
+    @PostMapping("/boolWithMultiFilter")
+    @ApiOperation(value = "boolWithMultiFilter索引", notes = "boolWithMultiFilter索引")
+    public SearchHits boolWithMultiFilter(@RequestParam("包含的postDate") String postDate, @RequestParam("包含的articleId")String articleId, @RequestParam("过滤掉的postDate")String notKey) {
+        return elasticService.boolWithMultiFilter(postDate, articleId, notKey);
     }
 
 

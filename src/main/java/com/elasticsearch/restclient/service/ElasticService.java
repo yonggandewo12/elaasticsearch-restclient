@@ -3,12 +3,15 @@ package com.elasticsearch.restclient.service;
 import com.elasticsearch.restclient.entity.Book;
 import org.elasticsearch.action.delete.DeleteResponse;
 import org.elasticsearch.action.index.IndexResponse;
+import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.action.update.UpdateResponse;
 import org.elasticsearch.search.SearchHits;
 import org.elasticsearch.search.aggregations.bucket.terms.ParsedLongTerms;
 import org.elasticsearch.search.aggregations.bucket.terms.ParsedStringTerms;
 import org.elasticsearch.search.aggregations.metrics.max.Max;
 import org.elasticsearch.search.aggregations.metrics.tophits.ParsedTopHits;
+
+import java.util.Map;
 
 /**
  * @Description
@@ -35,6 +38,10 @@ public interface ElasticService {
     ParsedLongTerms logTermsMultiAggregate(String key);
 
     ParsedStringTerms filterAggregate(String include, String exclude, String field);
+
+    SearchResponse term(String key);
+
+    SearchHits boolWithMultiFilter(String postDate, String articleId, String notKey);
 
 
 

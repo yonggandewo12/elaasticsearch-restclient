@@ -3,6 +3,7 @@ package com.elasticsearch.restclient.service.impl;
 import com.elasticsearch.restclient.constants.KeyConstant;
 import com.elasticsearch.restclient.entity.Book;
 import com.elasticsearch.restclient.service.ElasticService;
+import io.swagger.annotations.Api;
 import lombok.extern.slf4j.Slf4j;
 import org.elasticsearch.action.delete.DeleteRequest;
 import org.elasticsearch.action.delete.DeleteResponse;
@@ -13,6 +14,8 @@ import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.action.update.UpdateRequest;
 import org.elasticsearch.action.update.UpdateResponse;
 import org.elasticsearch.client.RestHighLevelClient;
+import org.elasticsearch.index.query.BoolQueryBuilder;
+import org.elasticsearch.index.query.ConstantScoreQueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.SearchHits;
@@ -24,6 +27,7 @@ import org.elasticsearch.search.aggregations.bucket.terms.support.IncludeExclude
 import org.elasticsearch.search.aggregations.metrics.max.Max;
 import org.elasticsearch.search.aggregations.metrics.tophits.ParsedTopHits;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
+import org.elasticsearch.search.profile.ProfileShardResult;
 import org.elasticsearch.search.sort.SortOrder;
 import org.springframework.stereotype.Service;
 
@@ -242,4 +246,45 @@ public class ElasticServiceImpl implements ElasticService {
         }
         return searchResponse.getAggregations().get("filter");
     }
+
+    @Override
+    public SearchResponse term(String key) {
+        SearchRequest searchRequest = new SearchRequest();
+        SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+        //term是低级索引，是精确索引，但当字段为text是是要分词的，此时用term搜不出来，需要加附加字段.keyword
+        searchSourceBuilder.query(QueryBuilders.constantScoreQuery(QueryBuilders.termQuery("articleID.keyword", key)));
+        searchRequest.types(KeyConstant.FORM_TYPE);
+        searchRequest.indices(KeyConstant.FORM_INDEX);
+        searchRequest.source(searchSourceBuilder);
+        SearchResponse searchResponse = new SearchResponse();
+        try {
+            searchResponse = restHighLevelClient.search(searchRequest);
+        } catch (Exception e) {
+            log.error("....term query failed:{}", e);
+        }
+        return searchResponse;
+    }
+
+    @Override
+    public SearchHits boolWithMultiFilter(String postDate, String articleId, String notKey) {
+        SearchRequest searchRequest = new SearchRequest();
+        SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+        //term是低级索引，是精确索引，但当字段为text是是要分词的，此时用term搜不出来，需要加附加字段.keyword
+        BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery();
+        boolQueryBuilder.should(QueryBuilders.termsQuery("postDate.keyword",postDate));
+        boolQueryBuilder.should(QueryBuilders.termQuery("articleID.keyword",articleId));
+        boolQueryBuilder.mustNot(QueryBuilders.termQuery("postDate.keyword", notKey));
+        searchSourceBuilder.query(boolQueryBuilder);
+        searchRequest.types(KeyConstant.FORM_TYPE);
+        searchRequest.indices(KeyConstant.FORM_INDEX);
+        searchRequest.source(searchSourceBuilder);
+        SearchResponse searchResponse = new SearchResponse();
+        try {
+            searchResponse = restHighLevelClient.search(searchRequest);
+        } catch (Exception e) {
+            log.error("....term query failed:{}", e);
+        }
+        return searchResponse.getHits();
+    }
+
 }

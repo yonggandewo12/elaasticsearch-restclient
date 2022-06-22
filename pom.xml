@@ -44,7 +44,7 @@
         <dependency>
             <groupId>org.elasticsearch.client</groupId>
             <artifactId>elasticsearch-rest-client</artifactId>
-            <version>5.6.9</version>
+            <version>6.8.15</version>
         </dependency>
         <!-- Java High Level REST Client -->
         <dependency>
